@@ -33,8 +33,8 @@ func ResourceLanguageModel() *schema.Resource {
 		},
 
 		Timeouts: &schema.ResourceTimeout{
-			Create: schema.DefaultTimeout(30 * time.Minute),
-			Delete: schema.DefaultTimeout(30 * time.Minute),
+			Create: schema.DefaultTimeout(90 * time.Minute),
+			Delete: schema.DefaultTimeout(90 * time.Minute),
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -155,7 +155,7 @@ func resourceLanguageModelRead(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("setting input data config: %s", err)
 	}
 
-	tags, err := ListTags(ctx, conn, d.Id())
+	tags, err := ListTags(ctx, conn, arn)
 	if err != nil {
 		return diag.Errorf("listing tags for Transcribe LanguageModel (%s): %s", d.Id(), err)
 	}
@@ -285,7 +285,11 @@ func flattenInputDataConfig(apiObjects *types.InputDataConfig) []interface{} {
 }
 
 func expandInputDataConfig(tfList []interface{}) *types.InputDataConfig {
-	var s *types.InputDataConfig
+	if len(tfList) == 0 || tfList[0] == nil {
+		return nil
+	}
+
+	s := &types.InputDataConfig{}
 
 	i := tfList[0].(map[string]interface{})
 
@@ -297,7 +301,7 @@ func expandInputDataConfig(tfList []interface{}) *types.InputDataConfig {
 		s.S3Uri = aws.String(val.(string))
 	}
 
-	if val, ok := i["tuning_data_s3_uri"]; ok {
+	if val, ok := i["tuning_data_s3_uri"]; ok && val != "" {
 		s.TuningDataS3Uri = aws.String(val.(string))
 	}
 

@@ -2,7 +2,6 @@
 package conns
 
 import (
-	"github.com/aws/aws-sdk-go-v2/service/transcribe"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/accessanalyzer"
@@ -574,7 +573,6 @@ func (c *Config) clientConns(sess *session.Session) *AWSClient {
 		TextractConn:                     textract.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.Textract])})),
 		TimestreamQueryConn:              timestreamquery.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.TimestreamQuery])})),
 		TimestreamWriteConn:              timestreamwrite.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.TimestreamWrite])})),
-		TranscribeConn:                   transcribe.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.Transcribe])})),
 		TranscribeStreamingConn:          transcribestreamingservice.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.TranscribeStreaming])})),
 		TransferConn:                     transfer.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.Transfer])})),
 		TranslateConn:                    translate.New(sess.Copy(&aws.Config{Endpoint: aws.String(c.Endpoints[names.Translate])})),

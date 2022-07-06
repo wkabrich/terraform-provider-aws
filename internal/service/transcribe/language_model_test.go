@@ -155,6 +155,13 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
+func testAccLanguageModelBaseConfig(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_s3_bucket" "test" {
+  bucket = %[1]q
+}
+`, rName)
+}
 func testAccLanguageModelConfig_basic(rName string) string {
 	return fmt.Sprintf(`
 resource "aws_security_group" "test" {
@@ -179,5 +186,5 @@ resource "aws_transcribe_languagemodel" "test" {
     password = "TestTest1234"
   }
 }
-`, rName, version)
+`, rName)
 }
