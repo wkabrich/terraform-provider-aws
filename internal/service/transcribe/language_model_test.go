@@ -3,7 +3,6 @@ package transcribe_test
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/transcribe"
@@ -41,22 +40,14 @@ func TestAccTranscribeLanguageModel_basic(t *testing.T) {
 				Config: testAccLanguageModelConfig_basic(rName),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckLanguageModelExists(resourceName, &languageModel),
-					resource.TestCheckResourceAttr(resourceName, "auto_minor_version_upgrade", "false"),
-					resource.TestCheckResourceAttrSet(resourceName, "maintenance_window_start_time.0.day_of_week"),
-					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "user.*", map[string]string{
-						"console_access": "false",
-						"groups.#":       "0",
-						"username":       "Test",
-						"password":       "TestTest1234",
-					}),
-					acctest.MatchResourceAttrRegionalARN(resourceName, "arn", "transcribe", regexp.MustCompile(`languagemodel:+.`)),
+					resource.TestCheckResourceAttr(resourceName, "base_model_name", "NarrowBand"),
+					resource.TestCheckResourceAttr(resourceName, "language_code", "\"en-US\""),
 				),
 			},
 			{
-				ResourceName:            resourceName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"apply_immediately", "user"},
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -69,7 +60,7 @@ func TestAccTranscribeLanguageModel_disappears(t *testing.T) {
 
 	var languageModel types.LanguageModel
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
-	resourceName := "aws_transcribe_languagemodel.test"
+	resourceName := "aws_transcribe_language_model.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -157,34 +148,66 @@ func testAccPreCheck(t *testing.T) {
 
 func testAccLanguageModelBaseConfig(rName string) string {
 	return fmt.Sprintf(`
-resource "aws_s3_bucket" "test" {
-  bucket = %[1]q
+data "aws_iam_policy_document" "test" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["transcribe.amazonaws.com"]
+    }
+  }
 }
-`, rName)
+
+resource "aws_iam_role" "example" {
+  name               = %[1]q
+  assume_role_policy = data.aws_iam_policy_document.test.json
 }
-func testAccLanguageModelConfig_basic(rName string) string {
-	return fmt.Sprintf(`
-resource "aws_security_group" "test" {
+
+resource "aws_iam_role_policy" "test_policy" {
   name = %[1]q
+  role = aws_iam_role.test.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket",
+        ]
+        Effect   = "Allow"
+        Resource = ["*"]
+      },
+    ]
+  })
 }
 
-resource "aws_transcribe_languagemodel" "test" {
-  languagemodel_name             = %[1]q
-  engine_type             = "ActiveTranscribe"
-  engine_version          = %[2]q
-  host_instance_type      = "transcribe.t2.micro"
-  security_groups         = [aws_security_group.test.id]
-  authentication_strategy = "simple"
-  storage_type            = "efs"
-
-  logs {
-    general = true
-  }
-
-  user {
-    username = "Test"
-    password = "TestTest1234"
-  }
+resource "aws_s3_bucket" "test" {
+  bucket        = %[1]q
+  force_destroy = true
 }
 `, rName)
+}
+
+func testAccLanguageModelConfig_basic(rName string) string {
+	return acctest.ConfigCompose(
+		testAccLanguageModelBaseConfig(rName),
+		fmt.Sprintf(`
+resource "aws_transcribe_language_model" "test" {
+  model_name      = %[1]q
+  base_model_name = "NarrowBand"
+
+  input_data_config {
+    data_access_role_arn = aws_iam_role.test.arn
+    s3_uri               = "s3://${aws_s3_bucket.test.id}/transcribe/"
+  }
+
+  language_code = "en-US"
+
+  tags = {
+    ENVIRONMENT = "development"
+  }
+}
+`, rName))
 }
